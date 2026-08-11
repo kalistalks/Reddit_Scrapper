@@ -37,7 +37,7 @@ def setup_environment():
 
 if __name__ == "__main__":
     log = setup_logger()
-    log.info("\U0001F680 Starting Cronlytic Reddit scraping pipeline...")
+    log.info("\U0001F680 Starting marine bilge pump sentiment analysis pipeline...")
 
     if not setup_environment():
         log.error("Failed to set up environment. Exiting.")

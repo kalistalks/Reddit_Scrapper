@@ -14,7 +14,7 @@ def setup_logger():
     os.makedirs("logs", exist_ok=True)
 
     # Create logger
-    logger = logging.getLogger("cronlytic.com")
+    logger = logging.getLogger("marine_bilge_sentiment")
     logger.setLevel(log_level)
 
     # Clear existing handlers
@@ -26,7 +26,7 @@ def setup_logger():
 
     # Create file handler
     today = datetime.now().strftime("%Y-%m-%d")
-    file_handler = logging.FileHandler(f"logs/cronlytic_{today}.log")
+    file_handler = logging.FileHandler(f"logs/marine_bilge_sentiment_{today}.log")
     file_handler.setLevel(log_level)
 
     # Create formatter

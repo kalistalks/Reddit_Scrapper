@@ -27,7 +27,7 @@ def build_insight_prompt(post: dict) -> List[Dict[str, str]]:
     return [
         {
             "role": "system",
-            "content": "You are a product strategist evaluating Reddit posts for viable product opportunities."
+            "content": "You are a marine market research analyst extracting sentiment, recurring complaints, and product references from Reddit posts about bilge pumps."
         },
         {
             "role": "user",

@@ -28,7 +28,7 @@ def build_filter_prompt(post: dict) -> List[Dict]:
     return [
         {
             "role": "system",
-            "content": "You are a market research analyst identifying posts that describe genuine pain points with product potential."
+            "content": "You are a marine market research analyst identifying Reddit posts that discuss bilge pumps, boat dewatering, and related reliability or maintenance pain points."
         },
         {
             "role": "user",

@@ -17,8 +17,8 @@ from config.config_loader import get_config
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="Reddit Posts Insights Viewer",
-    page_icon="📊",
+    page_title="Marine Bilge Pump Sentiment Explorer",
+    page_icon="⚓",
     layout="wide"
 )
 
@@ -58,6 +58,13 @@ def load_posts_with_insights(
     query = """
     SELECT id, url, title, body, relevance_score, pain_score, emotion_score,
            COALESCE(technical_depth_score, 0) as technical_depth_score,
+            COALESCE(sentiment_label, '') as sentiment_label,
+            COALESCE(sentiment_score, 0) as sentiment_score,
+            COALESCE(sentiment_confidence, 0) as sentiment_confidence,
+            COALESCE(sentiment_aspects, '') as sentiment_aspects,
+            COALESCE(product_mentioned, '') as product_mentioned,
+            COALESCE(complaint_summary, '') as complaint_summary,
+            COALESCE(praise_summary, '') as praise_summary,
            subreddit, created_utc, processed_at
     FROM posts
     WHERE insight_processed = 1
@@ -112,6 +119,7 @@ def load_posts_with_insights(
     posts_df['technical_moat'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('technical_moat', ''))
     posts_df['business_model'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('business_model', ''))
     posts_df['business_type'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('business_type', ''))
+    posts_df['sentiment_magnitude'] = posts_df['sentiment_score'].abs()
 
     return posts_df
 
@@ -123,17 +131,22 @@ def display_post_card(post: pd.Series):
         col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 9])
 
         with col1:
-            st.metric("ROI", f"{post['roi_weight']}")
+            st.metric("Sentiment", str(post.get('sentiment_label', '')).title() or "Unknown")
         with col2:
-            st.metric("Relevance", f"{post['relevance_score']:.2f}")
+            st.metric("Score", f"{post['sentiment_score']:.2f}")
         with col3:
-            st.metric("Pain Score", f"{post['pain_score']:.2f}")
+            st.metric("Confidence", f"{post['sentiment_confidence']:.2f}")
         with col4:
-            st.metric("Emotion", f"{post['emotion_score']:.2f}")
+            st.metric("Relevance", f"{post['relevance_score']:.2f}")
         with col5:
-            st.metric("Tech Depth", f"{post['technical_depth_score']:.1f}")
+            st.metric("Heat", f"{post['sentiment_magnitude']:.2f}")
         with col6:
-            st.info(post['pain_point'])
+            if post.get('complaint_summary'):
+                st.error(post['complaint_summary'])
+            elif post.get('praise_summary'):
+                st.success(post['praise_summary'])
+            elif post.get('pain_point'):
+                st.info(post['pain_point'])
 
     # Title and tags row
     col1, col2 = st.columns([1, 1])
@@ -146,7 +159,7 @@ def display_post_card(post: pd.Series):
 
     # Product opportunity section
     if post.get('product_opportunity'):
-        st.success(f"💡 **Suggested Solution:** {post['product_opportunity']}")
+        st.success(f"💡 **Market Opportunity:** {post['product_opportunity']}")
 
     # Add some white space
     st.markdown("")
@@ -160,6 +173,21 @@ def display_post_card(post: pd.Series):
         if post['justification']:
             st.markdown("**Justification:**")
             st.markdown(post['justification'])
+
+        if post.get('product_mentioned'):
+            st.markdown(f"**Product Mentioned:** {post['product_mentioned']}")
+
+        if post.get('sentiment_aspects'):
+            aspects = post['sentiment_aspects']
+            if isinstance(aspects, str):
+                try:
+                    parsed = json.loads(aspects)
+                    if isinstance(parsed, list):
+                        aspects = parsed
+                except Exception:
+                    aspects = [item.strip() for item in aspects.split(',') if item.strip()]
+            if isinstance(aspects, list) and aspects:
+                st.markdown("**Aspects:** " + ", ".join(str(item) for item in aspects))
 
         # Show additional insight fields
         details_parts = []
@@ -182,8 +210,8 @@ def display_post_card(post: pd.Series):
                 st.markdown(part)
 
 def main():
-    st.title("📊 Reddit Posts Insights Viewer")
-    st.markdown("Browse and analyze Reddit posts with AI-generated insights")
+    st.title("⚓ Marine Bilge Pump Sentiment Explorer")
+    st.markdown("Browse Reddit posts and comments with AI-generated sentiment analysis for marine bilge pumps")
 
     # Configuration
     cfg = get_config()
@@ -223,7 +251,7 @@ def main():
     st.sidebar.header("🔧 Filters & Sorting")
 
     # Score range filters
-    st.sidebar.subheader("Score Filters")
+    st.sidebar.subheader("Sentiment Filters")
 
     # Helper function to create safe sliders
     def create_safe_slider(label: str, values: pd.Series, key: str = None):
@@ -244,11 +272,10 @@ def main():
             key=key
         )
 
-    roi_range = create_safe_slider("ROI Range", df['roi_weight'], "roi")
+    sentiment_range = create_safe_slider("Sentiment Magnitude Range", df['sentiment_magnitude'], "sentiment_magnitude")
     relevance_range = create_safe_slider("Relevance Score Range", df['relevance_score'], "relevance")
+    confidence_range = create_safe_slider("Confidence Range", df['sentiment_confidence'], "confidence")
     pain_range = create_safe_slider("Pain Score Range", df['pain_score'], "pain")
-    emotion_range = create_safe_slider("Emotion Score Range", df['emotion_score'], "emotion")
-    tech_depth_range = create_safe_slider("Technical Depth Range", df['technical_depth_score'], "tech_depth")
 
     # Subreddit filter
     subreddits = df['subreddit'].unique().tolist()
@@ -262,7 +289,7 @@ def main():
     st.sidebar.subheader("Sorting")
     sort_by = st.sidebar.selectbox(
         "Sort by",
-        options=['relevance_score', 'pain_score', 'emotion_score', 'technical_depth_score', 'roi_weight', 'created_utc'],
+        options=['sentiment_magnitude', 'sentiment_score', 'relevance_score', 'sentiment_confidence', 'created_utc'],
         index=0
     )
 
@@ -274,16 +301,14 @@ def main():
 
     # Apply filters
     filtered_df = df[
-        (df['roi_weight'] >= roi_range[0]) &
-        (df['roi_weight'] <= roi_range[1]) &
+        (df['sentiment_magnitude'] >= sentiment_range[0]) &
+        (df['sentiment_magnitude'] <= sentiment_range[1]) &
         (df['relevance_score'] >= relevance_range[0]) &
         (df['relevance_score'] <= relevance_range[1]) &
+        (df['sentiment_confidence'] >= confidence_range[0]) &
+        (df['sentiment_confidence'] <= confidence_range[1]) &
         (df['pain_score'] >= pain_range[0]) &
         (df['pain_score'] <= pain_range[1]) &
-        (df['emotion_score'] >= emotion_range[0]) &
-        (df['emotion_score'] <= emotion_range[1]) &
-        (df['technical_depth_score'] >= tech_depth_range[0]) &
-        (df['technical_depth_score'] <= tech_depth_range[1]) &
         (df['subreddit'].isin(selected_subreddits))
     ]
 
@@ -314,10 +339,10 @@ def main():
     if len(filtered_df) > 0:
         st.sidebar.subheader("📈 Summary Stats")
         st.sidebar.metric("Total Posts", len(filtered_df))
+        st.sidebar.metric("Avg Sentiment", f"{filtered_df['sentiment_score'].mean():.2f}")
+        st.sidebar.metric("Avg Heat", f"{filtered_df['sentiment_magnitude'].mean():.2f}")
         st.sidebar.metric("Avg Relevance", f"{filtered_df['relevance_score'].mean():.2f}")
-        st.sidebar.metric("Avg Pain Score", f"{filtered_df['pain_score'].mean():.2f}")
-        st.sidebar.metric("Avg Emotion Score", f"{filtered_df['emotion_score'].mean():.2f}")
-        st.sidebar.metric("Avg Tech Depth", f"{filtered_df['technical_depth_score'].mean():.2f}")
+        st.sidebar.metric("Avg Confidence", f"{filtered_df['sentiment_confidence'].mean():.2f}")
 
 if __name__ == "__main__":
     main()

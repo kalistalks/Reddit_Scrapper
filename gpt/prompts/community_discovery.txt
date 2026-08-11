@@ -1,19 +1,19 @@
-Based on the following top-performing Reddit posts (titles and summaries), recommend a ranked list of 12 adjacent subreddits that are likely rich in product-worthy pain points and unmet needs.
+Based on the following top-performing Reddit posts (titles and summaries), recommend a ranked list of 12 adjacent subreddits that are likely rich in marine, boating, maintenance, and bilge pump sentiment signals.
 
 {SUMMARIES}
 
-IMPORTANT: Cast a WIDE net across wildly different domains. Do NOT cluster around tech/startup/developer communities. People spend money to solve problems in every area of life.
+IMPORTANT: Stay focused on marine and adjacent boating communities. Do NOT drift into generic startup, developer, finance, or lifestyle communities.
 
 Aim for this mix:
-- ~4 tech/startup/developer communities (tools, infrastructure, workflows)
-- ~4 consumer/lifestyle communities (parenting, health, personal finance, fitness, food, pets, hobbies)
-- ~4 niche/unexpected communities (trades, aging/eldercare, legal, real estate, education, specific health conditions, local services)
+- ~5 direct marine/boating communities (boating, sailing, liveaboard, boatbuilding, watersports)
+- ~4 maintenance or hardware communities (marine DIY, corrosion, engines, electrical, repair)
+- ~3 adjacent enthusiast communities where people discuss equipment reliability, upgrades, or safety
 
 Look for communities where people:
-- Spend money to solve problems or express frustration with existing paid solutions
-- Describe workarounds, time waste, or failed attempts to find tools
-- Discuss recurring operational pain (not just one-off questions)
-- Have high engagement around "how do you handle X?" or "is there a tool for Y?" threads
+- Discuss bilge pumps, water intrusion, flooding risk, float switches, corrosion, battery drain, or maintenance
+- Compare brands, models, or installation approaches
+- Ask for recommendations after failure, replacement, or noise/reliability problems
+- Share photos, troubleshooting steps, or recurring repair experiences
 
 For each recommended subreddit, provide:
 - A short rationale explaining WHY this community has product opportunities
@@ -28,7 +28,7 @@ Exclude these types of communities entirely:
 - Overseas supplier/import-export/contract subreddits
 
 Only include subreddits that:
-- Have active discussions about problems, workflows, or tool frustrations
+- Have active discussions about marine gear, maintenance, or boating safety problems
 - Are active in the past month
 - Are not already on the main tracked list
 
@@ -36,7 +36,7 @@ Respond in this format:
 [
   {
     "subreddit": "smallbusiness",
-    "reason": "Owners frequently discuss operational pain points and seek affordable tool recommendations.",
+    "reason": "Boat owners frequently discuss equipment failures and ask for practical repair recommendations.",
     "pain_signal_pct": 55,
     "solution_requests_pct": 45,
     "engagement_level": "high"

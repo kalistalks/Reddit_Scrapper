@@ -1,6 +1,4 @@
-You are a senior product strategist. A Reddit post or comment was flagged as containing a potential market pain point — a real problem that could be addressed by a new digital product or service (SaaS, app, API, platform, browser extension, mobile app, etc.).
-
-Focus exclusively on software and digital service opportunities. Do not propose hardware, physical products, or solutions that require manufacturing.
+You are analyzing a Reddit post/comment about marine bilge pumps for a university engineering market research project.
 
 Exclude entirely — do NOT analyze these topics (return roi_weight: 1 and note the exclusion):
 - Legal services, law firm tools, attorney/paralegal workflows
@@ -8,15 +6,15 @@ Exclude entirely — do NOT analyze these topics (return roi_weight: 1 and note 
 - Overseas contracts, supplier management, import/export logistics
 - Narrow industry-specific tools for a single vertical (e.g., "dental office scheduler", "trucking fleet manager") — unless the underlying problem is universal
 
-We're looking for **big product thinking**: ideas that could become platforms with network effects, attract millions of users, and solve broad human problems. Think Tinder, Airbnb, n8n, Flo Health — products that start with a universal pain point and grow into defensible platforms. If the idea only serves a niche of <10K potential users, score it down significantly.
+We are primarily looking for sentiment evidence and product-research signals around marine bilge pumps. Focus on what the user likes, dislikes, fears, or has trouble with, and be specific about the exact product or part of the product.
 
 If this is a COMMENT, analyze it within the context of the parent post. The comment may elaborate on, agree with, or add nuance to problems described in the post. Read between the lines — look for implicit pain signals like workarounds, complaints about time spent, emotional language, or resignation ("I just gave up and did it manually").
 
 Your task is to extract a concrete, actionable product opportunity:
 
-1. **Core pain point**: What specific problem is the user experiencing? Be precise — not "they need better tools" but "they spend 3 hours weekly manually reconciling invoices across two systems."
+1. **Core pain point**: What specific problem is the user experiencing? Be precise — not "they need better tools" but "their automatic bilge pump fails to activate quickly enough during rain or rough water."
 
-2. **Affected audience**: Who suffers from this? Be specific about the segment (e.g., "freelance designers with 5-20 clients" not just "freelancers"). Is this B2B (businesses pay), B2C (consumers pay), B2B2C, or a marketplace?
+2. **Affected audience**: Who suffers from this? Be specific about the segment (e.g., "small-boat owners with outboard-powered leisure craft" not just "boaters"). Is this B2B (businesses pay), B2C (consumers pay), B2B2C, or a marketplace?
 
 3. **Existing alternatives & gap**: Name 2-3 specific existing solutions (real products, not hypothetical). What gap remains — why don't these solve the problem? (too expensive, too complex, missing key feature, wrong audience)
 
@@ -31,7 +29,7 @@ Your task is to extract a concrete, actionable product opportunity:
 
 7. **Business model**: How would this make money? (subscription, freemium, one-time purchase, usage-based, etc.)
 
-8. **Market tags**: Up to 3 domain tags (e.g., "invoicing", "parenting-tools", "fitness-tracking").
+8. **Market tags**: Up to 3 domain tags (e.g., "marine-maintenance", "boat-hardware", "boating-safety").
 
 9. **Viability assessment**: Score 1-5 considering ALL of:
    - Market size (how many people have this problem?)
@@ -46,15 +44,26 @@ Your task is to extract a concrete, actionable product opportunity:
 
 Respond with a JSON object like:
 {
-  "pain_point": "Freelance designers spend 3+ hours weekly chasing late payments across PayPal, Stripe, and bank transfers with no unified view.",
-  "affected_audience": "freelance designers and illustrators managing 5-20 active clients",
+   "pain_point": "Boat owners report unreliable bilge pump activation, slow drainage, or frequent maintenance issues during wet conditions.",
+   "affected_audience": "recreational boat owners, liveaboards, and marine technicians",
   "business_type": "B2C",
-  "existing_alternatives": "FreshBooks (too expensive at $30/mo for solo), Wave (free but no payment tracking across processors), spreadsheets (manual and error-prone)",
-  "product_opportunity": "A lightweight payment tracker that auto-imports from PayPal, Stripe, and bank feeds, flags overdue invoices, and sends automated reminders. MVP: connect 2 payment sources + overdue alerts.",
+   "existing_alternatives": "Rule, Johnson, and Attwood pumps plus generic marine retailers; the gap is often reliability visibility, diagnostics, and better maintenance guidance",
+   "product_opportunity": "A marine sentiment dashboard that classifies bilge pump discussions by complaint type, brand, and urgency. MVP: ingest Reddit posts, detect sentiment, and cluster recurring issues by aspect.",
   "build_complexity": "medium",
-  "technical_moat": "Requires reliable real-time sync across 3+ payment APIs with different webhook formats, intelligent reconciliation logic to match partial payments across sources, and idempotent transaction processing to avoid double-counting. Not trivially replicable.",
-  "business_model": "Freemium — free for 1 payment source, $9/mo for unlimited",
-  "tags": ["invoicing", "freelancer-tools", "payments"],
+   "technical_moat": "Requires robust text classification, aspect-level sentiment extraction, recurring-issue clustering, and domain-specific normalization for marine hardware terminology. Not trivially replicable.",
+   "business_model": "Internal research tool or subscription analytics for marine brands and equipment retailers",
+   "tags": ["marine-maintenance", "bilge-pumps", "sentiment-analysis"],
   "roi_weight": 4,
-  "justification": "Large addressable market (millions of freelancers), clear willingness to pay (poster mentions paying $30/mo for FreshBooks), and meaningful integration complexity creates a real technical moat against quick clones."
+   "justification": "The post signals recurring maintenance or reliability issues rather than a one-off complaint, which is useful for market research. The strongest value comes from aspect-level sentiment and issue clustering, not a simple cloneable dashboard."
+  "sentiment_label": "positive | negative | neutral | mixed",
+  "sentiment_score": <float from -1.0 (very negative) to 1.0 (very positive)>,
+  "confidence": <float 0.0-1.0, how confident you are in this reading>,
+  "aspects": [<list of specific aspects discussed, e.g. "reliability", "flow rate", "price", "float switch failure", "installation", "noise", "corrosion", "automatic activation", "battery drain">],
+  "product_mentioned": "<brand/model if named, else null>",
+  "complaint_summary": "<if negative/mixed, 1-sentence summary of the specific complaint. Else null.>",
+  "praise_summary": "<if positive/mixed, 1-sentence summary of what worked well. Else null.>"
 }
+
+Be precise about WHICH aspect the sentiment attaches to — a post can be
+positive about pump reliability but negative about price, for example. Use
+"mixed" when sentiment differs by aspect.

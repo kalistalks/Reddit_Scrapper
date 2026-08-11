@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from config.config_loader import get_config
 from datetime import datetime, UTC
@@ -83,13 +84,20 @@ def update_post_filter_scores(post_id: str, scores: dict):
         print(f"[SQLite update_post_filter_scores Error] {e}")
 
 def update_post_insight(post_id: str, insight: dict):
-    """Update deeper insights (tags, roi_weight). Safe from overwriting with nulls."""
+    """Update deeper insights and sentiment fields. Safe from overwriting with nulls."""
     conn = _get_connection()
     cursor = conn.cursor()
 
     fields = {
         "tags": ", ".join(insight["tags"]) if "tags" in insight else None,
-        "roi_weight": insight.get("roi_weight")
+        "roi_weight": insight.get("roi_weight"),
+        "sentiment_label": insight.get("sentiment_label"),
+        "sentiment_score": insight.get("sentiment_score"),
+        "sentiment_confidence": insight.get("confidence"),
+        "sentiment_aspects": json.dumps(insight["aspects"]) if isinstance(insight.get("aspects"), list) else None,
+        "product_mentioned": insight.get("product_mentioned"),
+        "complaint_summary": insight.get("complaint_summary"),
+        "praise_summary": insight.get("praise_summary"),
     }
 
     updates = [f"{key} = ?" for key, value in fields.items() if value is not None]

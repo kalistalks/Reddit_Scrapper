@@ -1,13 +1,5 @@
-[![Visit Cronlytic](https://img.shields.io/badge/Cronlytic.com-Explore%20Serverless%20Scheduling-blue)](https://www.cronlytic.com)
-
-> Built to uncover hidden marketing signals on Reddit — and help power smarter growth for Cronlytic.com 🚀
-
-[![Watch the Explainer Video](https://img.youtube.com/vi/UeMfjuDnE_0/0.jpg)](https://youtu.be/UeMfjuDnE_0)
-
-> 📺 Click the thumbnail above to watch a full explainer — why I built this tool, how it works, and how you can use it to automate Reddit lead generation using GPT-4.
-
-# Reddit Scraper
-A Python application that scrapes Reddit for potential marketing leads, analyzes them with GPT models, and identifies high-value opportunities. Includes an interactive Streamlit dashboard for browsing and filtering results.
+# Marine Bilge Pump Sentiment Explorer
+A Python application that scrapes Reddit for marine and boating discussions, analyzes sentiment around bilge pumps, and surfaces recurring maintenance and reliability issues for market research. Includes an interactive Streamlit dashboard for browsing and filtering results.
 
 ## 📑 Table of Contents
 - [Overview](#-overview)
@@ -27,13 +19,13 @@ A Python application that scrapes Reddit for potential marketing leads, analyzes
 
 This tool uses a combination of Reddit's API and AI models (OpenAI or Anthropic) to:
 
-1. Scrape relevant subreddits for discussions across diverse domains (tech, finance, parenting, fitness, business, and more)
-2. Identify posts that express pain points with real product-building potential
-3. Score and analyze posts using multi-dimensional metrics including technical depth, implementability, and emotional intensity
+1. Scrape boating, sailing, marine DIY, and adjacent communities for bilge pump and water-intrusion discussions
+2. Identify posts that express recurring maintenance pain, praise, or frustration with marine equipment
+3. Score and analyze posts using sentiment, relevance, confidence, and issue heat
 4. Store results in a local SQLite database for review
 5. Browse and filter results through an interactive web dashboard
 
-The application maintains a balance between focused and exploratory subreddits, intelligently refreshing the exploratory list based on discoveries. This exploration process happens automatically as part of the main workflow.
+The application maintains a balance between focused and exploratory subreddits, intelligently refreshing the exploratory list based on marine-adjacent discoveries. This exploration process happens automatically as part of the main workflow.
 
 ## 🚀 Setup
 
@@ -71,7 +63,7 @@ The application maintains a balance between focused and exploratory subreddits, 
    ```
    REDDIT_CLIENT_ID=your_client_id
    REDDIT_CLIENT_SECRET=your_client_secret
-   REDDIT_USER_AGENT=script:cronlytic-reddit-scraper:v1.0 (by /u/yourusername)
+   REDDIT_USER_AGENT=script:marine-bilge-sentiment-explorer:v1.0 (by /u/yourusername)
    OPENAI_API_KEY=your_openai_api_key
    ANTHROPIC_API_KEY=your_anthropic_api_key
    ```
@@ -81,7 +73,7 @@ The application maintains a balance between focused and exploratory subreddits, 
 Configure the application by editing `config/config.yaml`. Key settings include:
 
 - **AI provider**: Choose between `openai` or `anthropic` as the batch processing backend
-- **Target subreddits**: Primary subreddits and exploratory subreddit settings
+- **Target subreddits**: Primary boating/marine subreddits and exploratory subreddit settings
 - **Post age range**: Only analyze posts within the configured age window
 - **API rate limits**: Prevent hitting Reddit API limits
 - **AI models**: Per-provider model configuration for filtering and deep analysis
@@ -129,28 +121,28 @@ streamlit run gui/gui.py --server.port 8501 --server.address localhost
 
 The dashboard provides:
 
-- **Score filtering** — Adjust sliders for ROI, relevance, pain score, emotion score, implementability, and technical depth to focus on the posts that matter most
+- **Sentiment filtering** — Adjust sliders for sentiment magnitude, relevance, confidence, and pain score to focus on the posts that matter most
 - **Subreddit filters** — Multi-select filters to narrow results by source subreddit
-- **Sorting** — Sort by any score metric (including technical depth) or post date, ascending or descending
+- **Sorting** — Sort by sentiment heat, sentiment score, relevance, confidence, or post date, ascending or descending
 - **Pagination** — Browse through large result sets 10 posts at a time
-- **Post cards** — Each post displays scores, pain point summary, product opportunity, technical depth, tags, and a link to the original Reddit thread
-- **Expandable details** — Click into any post to read the body text, AI-generated justification, affected audience, business type, existing alternatives, build complexity, business model, and technical moat analysis
-- **Summary statistics** — Sidebar shows total posts with average relevance, pain, emotion, and tech depth scores for the current filter
+- **Post cards** — Each post displays sentiment, score, confidence, relevance, heat, complaint or praise summary, tags, and a link to the original Reddit thread
+- **Expandable details** — Click into any post to read the body text, AI-generated justification, product mention, aspects, and market-opportunity notes
+- **Summary statistics** — Sidebar shows total posts with average sentiment, heat, relevance, and confidence for the current filter
 
 ## 📊 Results
 
 Results are stored in a SQLite database at `data/db.sqlite`. Besides the GUI, you can query it directly:
 
 ```sql
--- Today's top leads
+-- Today's top signals
 SELECT * FROM posts
 WHERE processed_at >= DATE('now')
-ORDER BY roi_weight DESC, relevance_score DESC
+ORDER BY ABS(COALESCE(sentiment_score, 0)) DESC, relevance_score DESC
 LIMIT 10;
 
 -- Posts with specific tag
 SELECT * FROM posts
-WHERE tags LIKE '%serverless%'
+WHERE tags LIKE '%bilge%'
 ORDER BY processed_at DESC;
 ```
 
@@ -216,7 +208,7 @@ The application includes several safeguards to control API costs:
 | **Reddit Scraping (Posts & Comments)**    | ✅ Done | Age-filtered, deduplicated, tracked via history table |
 | **Primary & Exploratory Subreddit Logic** | ✅ Done | With refreshable `exploratory_subreddits.json`        |
 | **GPT Filtering**                         | ✅ Done | Via batch API, scoring + threshold-based selection    |
-| **GPT Insight Extraction**                | ✅ Done | With batch API, structured JSON, ROI + tags           |
+| **GPT Insight Extraction**                | ✅ Done | With batch API, structured JSON, sentiment + tags     |
 | **SQLite Local DB Storage**               | ✅ Done | Full schema, type handling (`post`/`comment`)         |
 | **Rate Limiting**                         | ✅ Done | Real limiter applied to avoid Reddit bans             |
 | **Budget Control**                        | ✅ Done | Tracks monthly cost, blocks over-budget batches       |
@@ -259,14 +251,9 @@ Thanks to the following people who have contributed to this project:
 
 ## 🙋‍♂️ Why This Exists
 
-This tool was created as part of the growth strategy for [**Cronlytic.com**](https://www.cronlytic.com) — a serverless cron job scheduler designed for developers, indie hackers, and SaaS teams.
+This tool is being repurposed as a university final-year engineering project for market research on marine bilge pumps. The original Reddit credential and scraping flow remain intact, but the analysis layer now focuses on sentiment, complaint clustering, and equipment-specific research signals.
 
-If you're building something and want to:
-- Run scheduled webhooks or background jobs
-- Get reliable cron-like execution in the cloud
-- Avoid over-engineering with full servers
-
-👉 [**Check out Cronlytic**](https://www.cronlytic.com) — and let us know what you'd love to see.
+If you're using it for research, the most useful next step is usually to tune the tracked subreddits and the prompt templates for your exact marine equipment scope.
 
 ## 📝 License
 

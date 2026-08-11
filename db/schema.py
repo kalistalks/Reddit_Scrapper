@@ -33,6 +33,13 @@ def create_tables():
         pain_score REAL,
         tags TEXT,
         roi_weight INTEGER,
+        sentiment_label TEXT,
+        sentiment_score REAL,
+        sentiment_confidence REAL,
+        sentiment_aspects TEXT,
+        product_mentioned TEXT,
+        complaint_summary TEXT,
+        praise_summary TEXT,
         community_type TEXT,
         type TEXT,  -- 'post' or 'comment'
         post_body TEXT,  -- parent post body for comments
@@ -57,6 +64,21 @@ def create_tables():
         log.info("Added technical_depth_score column to posts table")
     except sqlite3.OperationalError:
         pass  # Column already exists
+
+    for column_sql, column_name in [
+        ("ALTER TABLE posts ADD COLUMN sentiment_label TEXT", "sentiment_label"),
+        ("ALTER TABLE posts ADD COLUMN sentiment_score REAL", "sentiment_score"),
+        ("ALTER TABLE posts ADD COLUMN sentiment_confidence REAL", "sentiment_confidence"),
+        ("ALTER TABLE posts ADD COLUMN sentiment_aspects TEXT", "sentiment_aspects"),
+        ("ALTER TABLE posts ADD COLUMN product_mentioned TEXT", "product_mentioned"),
+        ("ALTER TABLE posts ADD COLUMN complaint_summary TEXT", "complaint_summary"),
+        ("ALTER TABLE posts ADD COLUMN praise_summary TEXT", "praise_summary"),
+    ]:
+        try:
+            c.execute(column_sql)
+            log.info(f"Added {column_name} column to posts table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
     # Migration: add parent_post_id column if missing (for existing databases)
     try:

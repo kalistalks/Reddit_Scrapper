@@ -29,6 +29,15 @@ reddit = praw.Reddit(
     password=config["reddit"]["password"]
 )
 
+SEARCH_TERMS = ["bilge pump",
+    "bilge pump broke",
+    "bilge pump failed",
+    "automatic bilge pump",
+    "best bilge pump",
+    "bilge pump recommendation",
+    "bilge pump review",
+    ]
+
 limiter = RedditRateLimiter(config["scraper"].get("rate_limit_per_minute", 60))
 EXPLORATORY_FILE = "data/exploratory_subreddits.json"
 

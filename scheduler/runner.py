@@ -454,11 +454,11 @@ def get_high_potential_ids_from_filter_results(result_paths=None, score_threshol
     if deduped_count > 0:
         log.info(f"Deduplicated {deduped_count} same-thread entries (kept best per thread)")
 
-    log.info(f"Processed {processed} filter results, found {len(high_ids)} high-potential posts (from {len(high_candidates)} candidates)")
+    log.info(f"Processed {processed} filter results, found {len(high_ids)} high-signal posts (from {len(high_candidates)} candidates)")
     return high_ids, all_processed_ids
 
 def run_daily_pipeline():
-    log.info("\U0001F680 Starting Reddit scraping and analysis pipeline")
+    log.info("\U0001F680 Starting Reddit scraping and marine bilge pump sentiment analysis pipeline")
 
     ensure_directory_exists("data/deferred")
     ensure_directory_exists("data")
@@ -559,10 +559,10 @@ def run_daily_pipeline():
 
     output_limit = config["scoring"]["output_top_n"]
     top_posts = get_top_insights_from_today(limit=output_limit)
-    log.info(f"✅ Pipeline finished. Found {len(top_posts)} qualified leads.")
+    log.info(f"✅ Pipeline finished. Found {len(top_posts)} analyzed posts.")
 
     for i, post in enumerate(top_posts[:5], 1):
-        log.info(f"{i}. [{post['subreddit']}] {post['title']} — ROI: {post['roi_weight']} | Tags: {post['tags']} - {post['url']}")
+        log.info(f"{i}. [{post['subreddit']}] {post['title']} — Sentiment: {post.get('sentiment_label')} ({post.get('sentiment_score')}) | Tags: {post.get('tags')} - {post['url']}")
 
 
 if __name__ == "__main__":

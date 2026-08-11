@@ -80,7 +80,7 @@ def get_top_insights_from_today(limit=10) -> list:
         rows = conn.execute("""
             SELECT * FROM posts
             WHERE date(processed_at) = ? AND insight_processed = 1
-            ORDER BY roi_weight DESC, relevance_score DESC
+            ORDER BY ABS(COALESCE(sentiment_score, 0)) DESC, relevance_score DESC
             LIMIT ?
         """, (today, limit)).fetchall()
         return [dict(row) for row in rows]
