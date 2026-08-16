@@ -45,19 +45,22 @@ def _extract_json_from_text(text: str) -> str:
 @st.cache_data
 def load_posts_with_insights(
     db_path: str,
-    insights_dir: str,
+    results_dir: str,
     provider: str,
     data_version: float
 ) -> pd.DataFrame:
-    """Load posts with insight_processed=1 and join with insight data."""
+    """Load scored posts and join with any batch result data available."""
 
     # Connect to SQLite database
     conn = sqlite3.connect(db_path)
 
-    # Query posts with insights processed
+        # Query posts that have at least filter-stage scores.
     query = """
-    SELECT id, url, title, body, relevance_score, pain_score, emotion_score,
-           COALESCE(technical_depth_score, 0) as technical_depth_score,
+        SELECT id, url, title, body, relevance_score, emotion_score, pain_score,
+            implementability_score,
+            COALESCE(technical_depth_score, 0) as technical_depth_score,
+            COALESCE(tags, '') as tags,
+            COALESCE(roi_weight, 0) as roi_weight,
             COALESCE(sentiment_label, '') as sentiment_label,
             COALESCE(sentiment_score, 0) as sentiment_score,
             COALESCE(sentiment_confidence, 0) as sentiment_confidence,
@@ -65,19 +68,24 @@ def load_posts_with_insights(
             COALESCE(product_mentioned, '') as product_mentioned,
             COALESCE(complaint_summary, '') as complaint_summary,
             COALESCE(praise_summary, '') as praise_summary,
-           subreddit, created_utc, processed_at
+            subreddit, created_utc, processed_at,
+            COALESCE(insight_processed, 0) as insight_processed
     FROM posts
-    WHERE insight_processed = 1
+        WHERE relevance_score IS NOT NULL OR sentiment_score IS NOT NULL
     """
 
     posts_df = pd.read_sql_query(query, conn)
     conn.close()
 
-    # Load insight data from JSONL files
-    insights_data = {}
-    insights_path = Path(insights_dir)
+    # Load batch result data from JSONL files.
+    results_data = {}
+    results_path = Path(results_dir)
 
-    for jsonl_file in insights_path.glob("insight_result_*.jsonl"):
+    result_files = list(results_path.glob("insight_result_*.jsonl"))
+    if not result_files:
+        result_files = list(results_path.glob("filter_result_*.jsonl"))
+
+    for jsonl_file in result_files:
         with open(jsonl_file, 'r') as f:
             for line in f:
                 try:
@@ -91,8 +99,8 @@ def load_posts_with_insights(
                         if data.get("result_type") != "succeeded":
                             continue
                         content = data.get("content", "")
-                        insight_json = json.loads(_extract_json_from_text(content))
-                        insights_data[custom_id] = insight_json
+                        result_json = json.loads(_extract_json_from_text(content))
+                        results_data[custom_id] = result_json
                     elif provider == "openai":
                         # OpenAI format
                         if (
@@ -101,25 +109,28 @@ def load_posts_with_insights(
                             data['response']['body'].get('choices')
                         ):
                             content = data['response']['body']['choices'][0]['message']['content']
-                            insight_json = json.loads(_extract_json_from_text(content))
-                            insights_data[custom_id] = insight_json
+                            result_json = json.loads(_extract_json_from_text(content))
+                            results_data[custom_id] = result_json
 
                 except (json.JSONDecodeError, KeyError, IndexError):
                     continue
 
-    # Add insight data to posts dataframe
-    posts_df['pain_point'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('pain_point', ''))
-    posts_df['tags'] = posts_df['id'].map(lambda x: ', '.join(insights_data.get(x, {}).get('tags', [])))
-    posts_df['roi_weight'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('roi_weight', 0))
-    posts_df['justification'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('justification', ''))
-    posts_df['product_opportunity'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('product_opportunity', ''))
-    posts_df['affected_audience'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('affected_audience', ''))
-    posts_df['existing_alternatives'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('existing_alternatives', ''))
-    posts_df['build_complexity'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('build_complexity', ''))
-    posts_df['technical_moat'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('technical_moat', ''))
-    posts_df['business_model'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('business_model', ''))
-    posts_df['business_type'] = posts_df['id'].map(lambda x: insights_data.get(x, {}).get('business_type', ''))
+    # Add batch result data to the dataframe.
+    posts_df['summary'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('summary', ''))
+    posts_df['tags_from_result'] = posts_df['id'].map(lambda x: ', '.join(results_data.get(x, {}).get('tags', [])))
+    posts_df['justification'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('justification', ''))
+    posts_df['product_opportunity'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('product_opportunity', ''))
+    posts_df['affected_audience'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('affected_audience', ''))
+    posts_df['existing_alternatives'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('existing_alternatives', ''))
+    posts_df['build_complexity'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('build_complexity', ''))
+    posts_df['technical_moat'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('technical_moat', ''))
+    posts_df['business_model'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('business_model', ''))
+    posts_df['business_type'] = posts_df['id'].map(lambda x: results_data.get(x, {}).get('business_type', ''))
+    posts_df['tags_from_db'] = posts_df['tags']
+    posts_df['tags'] = posts_df['tags'].where(posts_df['tags'].astype(str).str.len() > 0, posts_df['tags_from_result'])
+    posts_df['pain_point'] = posts_df['summary']
     posts_df['sentiment_magnitude'] = posts_df['sentiment_score'].abs()
+    posts_df['has_deep_insights'] = posts_df['sentiment_label'].astype(str).str.len().gt(0) & (posts_df['sentiment_score'] != 0)
 
     return posts_df
 
@@ -131,22 +142,34 @@ def display_post_card(post: pd.Series):
         col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 9])
 
         with col1:
-            st.metric("Sentiment", str(post.get('sentiment_label', '')).title() or "Unknown")
+            if post.get('has_deep_insights'):
+                st.metric("Sentiment", str(post.get('sentiment_label', '')).title() or "Unknown")
+            else:
+                st.metric("Relevance", f"{post['relevance_score']:.2f}")
         with col2:
-            st.metric("Score", f"{post['sentiment_score']:.2f}")
+            if post.get('has_deep_insights'):
+                st.metric("Score", f"{post['sentiment_score']:.2f}")
+            else:
+                st.metric("Emotion", f"{post['emotion_score']:.2f}")
         with col3:
-            st.metric("Confidence", f"{post['sentiment_confidence']:.2f}")
+            if post.get('has_deep_insights'):
+                st.metric("Confidence", f"{post['sentiment_confidence']:.2f}")
+            else:
+                st.metric("Pain", f"{post['pain_score']:.2f}")
         with col4:
-            st.metric("Relevance", f"{post['relevance_score']:.2f}")
+            st.metric("Implement", f"{post['implementability_score']:.2f}")
         with col5:
-            st.metric("Heat", f"{post['sentiment_magnitude']:.2f}")
+            st.metric("Tech Depth", f"{post['technical_depth_score']:.2f}")
         with col6:
-            if post.get('complaint_summary'):
-                st.error(post['complaint_summary'])
-            elif post.get('praise_summary'):
-                st.success(post['praise_summary'])
-            elif post.get('pain_point'):
-                st.info(post['pain_point'])
+            if post.get('has_deep_insights'):
+                if post.get('complaint_summary'):
+                    st.error(post['complaint_summary'])
+                elif post.get('praise_summary'):
+                    st.success(post['praise_summary'])
+                elif post.get('pain_point'):
+                    st.info(post['pain_point'])
+            else:
+                st.info(post.get('summary', '') or post.get('pain_point', ''))
 
     # Title and tags row
     col1, col2 = st.columns([1, 1])
@@ -177,7 +200,7 @@ def display_post_card(post: pd.Series):
         if post.get('product_mentioned'):
             st.markdown(f"**Product Mentioned:** {post['product_mentioned']}")
 
-        if post.get('sentiment_aspects'):
+        if post.get('has_deep_insights') and post.get('sentiment_aspects'):
             aspects = post['sentiment_aspects']
             if isinstance(aspects, str):
                 try:
@@ -209,6 +232,10 @@ def display_post_card(post: pd.Series):
             for part in details_parts:
                 st.markdown(part)
 
+        if not post.get('has_deep_insights'):
+            st.markdown("---")
+            st.caption("Showing filter-stage results from the existing batch output. Run the deeper analysis later only if you want sentiment and product-opportunity fields.")
+
 def main():
     st.title("⚓ Marine Bilge Pump Sentiment Explorer")
     st.markdown("Browse Reddit posts and comments with AI-generated sentiment analysis for marine bilge pumps")
@@ -217,41 +244,45 @@ def main():
     cfg = get_config()
     provider = cfg["ai"]["provider"]
     db_path = cfg["database"]["path"]
-    insights_dir = cfg.get("paths", {}).get("batch_responses_dir", "data/batch_responses")
+    results_dir = cfg.get("paths", {}).get("batch_responses_dir", "data/batch_responses")
 
     # Check if files exist
     if not os.path.exists(db_path):
         st.error(f"Database not found at {db_path}")
         return
 
-    if not os.path.exists(insights_dir):
-        st.error(f"Insights directory not found at {insights_dir}")
+    if not os.path.exists(results_dir):
+        st.error(f"Results directory not found at {results_dir}")
         return
 
     # Build cache-buster from current data file mtimes.
-    insight_files = list(Path(insights_dir).glob("insight_result_*.jsonl"))
-    latest_insight_mtime = max((f.stat().st_mtime for f in insight_files), default=0.0)
-    data_version = max(os.path.getmtime(db_path), latest_insight_mtime)
+    result_files = list(Path(results_dir).glob("insight_result_*.jsonl")) + list(Path(results_dir).glob("filter_result_*.jsonl"))
+    latest_result_mtime = max((f.stat().st_mtime for f in result_files), default=0.0)
+    data_version = max(os.path.getmtime(db_path), latest_result_mtime)
 
     # Load data
     with st.spinner("Loading posts and insights..."):
         try:
-            df = load_posts_with_insights(db_path, insights_dir, provider, data_version)
+            df = load_posts_with_insights(db_path, results_dir, provider, data_version)
         except Exception as e:
             st.error(f"Error loading data: {str(e)}")
             return
 
     if df.empty:
-        st.warning("No posts with processed insights found.")
+        st.warning("No scored posts found in the database or batch results.")
         return
 
-    st.success(f"Loaded {len(df)} posts with insights (provider: {provider})")
+    insight_count = int(df['has_deep_insights'].sum()) if 'has_deep_insights' in df.columns else 0
+    if insight_count:
+        st.success(f"Loaded {len(df)} scored posts, including {insight_count} posts with deep insights (provider: {provider})")
+    else:
+        st.info(f"Loaded {len(df)} scored posts from the existing filter results. Deep insights are not processed yet, so the dashboard is using the filter-stage data.")
 
     # Sidebar filters
     st.sidebar.header("🔧 Filters & Sorting")
 
     # Score range filters
-    st.sidebar.subheader("Sentiment Filters")
+    st.sidebar.subheader("Score Filters")
 
     # Helper function to create safe sliders
     def create_safe_slider(label: str, values: pd.Series, key: str = None):
@@ -272,10 +303,11 @@ def main():
             key=key
         )
 
-    sentiment_range = create_safe_slider("Sentiment Magnitude Range", df['sentiment_magnitude'], "sentiment_magnitude")
     relevance_range = create_safe_slider("Relevance Score Range", df['relevance_score'], "relevance")
-    confidence_range = create_safe_slider("Confidence Range", df['sentiment_confidence'], "confidence")
+    emotion_range = create_safe_slider("Emotion Score Range", df['emotion_score'], "emotion")
     pain_range = create_safe_slider("Pain Score Range", df['pain_score'], "pain")
+    implementability_range = create_safe_slider("Implementability Range", df['implementability_score'], "implementability")
+    tech_depth_range = create_safe_slider("Technical Depth Range", df['technical_depth_score'], "tech_depth")
 
     # Subreddit filter
     subreddits = df['subreddit'].unique().tolist()
@@ -289,7 +321,7 @@ def main():
     st.sidebar.subheader("Sorting")
     sort_by = st.sidebar.selectbox(
         "Sort by",
-        options=['sentiment_magnitude', 'sentiment_score', 'relevance_score', 'sentiment_confidence', 'created_utc'],
+        options=['relevance_score', 'emotion_score', 'pain_score', 'implementability_score', 'technical_depth_score', 'created_utc'],
         index=0
     )
 
@@ -301,14 +333,16 @@ def main():
 
     # Apply filters
     filtered_df = df[
-        (df['sentiment_magnitude'] >= sentiment_range[0]) &
-        (df['sentiment_magnitude'] <= sentiment_range[1]) &
         (df['relevance_score'] >= relevance_range[0]) &
         (df['relevance_score'] <= relevance_range[1]) &
-        (df['sentiment_confidence'] >= confidence_range[0]) &
-        (df['sentiment_confidence'] <= confidence_range[1]) &
+        (df['emotion_score'] >= emotion_range[0]) &
+        (df['emotion_score'] <= emotion_range[1]) &
         (df['pain_score'] >= pain_range[0]) &
         (df['pain_score'] <= pain_range[1]) &
+        (df['implementability_score'] >= implementability_range[0]) &
+        (df['implementability_score'] <= implementability_range[1]) &
+        (df['technical_depth_score'] >= tech_depth_range[0]) &
+        (df['technical_depth_score'] <= tech_depth_range[1]) &
         (df['subreddit'].isin(selected_subreddits))
     ]
 
@@ -339,10 +373,10 @@ def main():
     if len(filtered_df) > 0:
         st.sidebar.subheader("📈 Summary Stats")
         st.sidebar.metric("Total Posts", len(filtered_df))
-        st.sidebar.metric("Avg Sentiment", f"{filtered_df['sentiment_score'].mean():.2f}")
-        st.sidebar.metric("Avg Heat", f"{filtered_df['sentiment_magnitude'].mean():.2f}")
         st.sidebar.metric("Avg Relevance", f"{filtered_df['relevance_score'].mean():.2f}")
-        st.sidebar.metric("Avg Confidence", f"{filtered_df['sentiment_confidence'].mean():.2f}")
+        st.sidebar.metric("Avg Emotion", f"{filtered_df['emotion_score'].mean():.2f}")
+        st.sidebar.metric("Avg Pain", f"{filtered_df['pain_score'].mean():.2f}")
+        st.sidebar.metric("Avg Tech Depth", f"{filtered_df['technical_depth_score'].mean():.2f}")
 
 if __name__ == "__main__":
     main()
