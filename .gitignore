@@ -22,9 +22,6 @@ logs/
 *.log
 
 # Database files
-data/db.sqlite
-data/exploratory_subreddits.json
-data/batch_responses/
 
 # IDE specific files
 .idea/
